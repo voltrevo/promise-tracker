@@ -12,5 +12,9 @@
     "async"
   ],
   "author": "Andrew Morris",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^3.11.0",
+    "eslint-config-airbnb": "^13.0.0"
+  }
 }
