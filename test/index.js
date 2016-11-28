@@ -6,6 +6,24 @@ const promiseTracker = require('../src/index')();
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+test('install and uninstall multiple times', (t) => {
+  const then = Promise.prototype.then;
+
+  promiseTracker.install();
+  t.notEqual(Promise.prototype.then, then);
+
+  promiseTracker.uninstall();
+  t.equal(Promise.prototype.then, then);
+
+  promiseTracker.install();
+  t.notEqual(Promise.prototype.then, then);
+
+  promiseTracker.uninstall();
+  t.equal(Promise.prototype.then, then);
+
+  t.end();
+});
+
 test('emits promise created on .then', (t) => {
   promiseTracker.install();
 

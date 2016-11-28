@@ -34,18 +34,18 @@ module.exports = () => {
       }
 
       for (const method of Object.keys(apiInstallData.originalMethods)) {
-        context.Promise.prototype[method] = function(resolveHandler, rejectHandler) {
-          promiseTracker.emit('promiseCreated', this);
-
+        context.Promise.prototype[method] = function interceptChain(resolveHandler, rejectHandler) {
           const promise = apiInstallData.originalMethods[method].apply(
             this,
             [resolveHandler, rejectHandler]
           );
 
-          const emitPromiseCompleted = () => promiseTracker.emit('promiseCompleted', this);
+          promiseTracker.emit('promiseCreated', promise);
+
+          const emitPromiseCompleted = () => promiseTracker.emit('promiseCompleted', promise);
 
           apiInstallData.originalMethods.then.apply(
-            this,
+            promise,
             [emitPromiseCompleted, emitPromiseCompleted]
           );
         };
@@ -74,7 +74,7 @@ module.exports = () => {
     };
 
     promiseTracker.addListener('promiseCompleted', installData.promiseCompletedListener);
-  }
+  };
 
   promiseTracker.uninstall = ({ quiet = false } = {}) => {
     if (!installData) {
@@ -91,6 +91,10 @@ module.exports = () => {
           'OriginalPromise.prototype.then is not the one that was set up by promiseTracker. This ' +
           'can happen if there is other promise tracking or tweaking going on.'
         );
+      }
+
+      for (const method of Object.keys(apiInstallData.originalMethods)) {
+        apiInstallData.context.Promise.prototype[method] = apiInstallData.originalMethods[method];
       }
     }
 
