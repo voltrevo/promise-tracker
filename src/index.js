@@ -2,7 +2,7 @@
 
 const EventEmitter = require('events');
 
-module.exports = function() {
+module.exports = () => {
   const promiseTracker = new EventEmitter();
 
   let installData;
@@ -19,58 +19,22 @@ module.exports = function() {
     const methods = ['then', 'catch', 'finally'];
 
     for (const context of promiseContexts) {
-      const OriginalPromise = context.Promise;
       const apiInstallData = {};
       apiInstallData.context = context;
-      apiInstallData.OriginalPromise = OriginalPromise;
       installData.apis.push(apiInstallData);
-
-      context.Promise = function(resolve, reject) {
-        const promise = new OriginalPromise(
-          (resolveValue) => {
-            OriginalPromise.resolve().then(() => {
-              promiseTracker.emit('promiseCompleted', promise);
-            });
-
-            resolve(resolveValue);
-          },
-          (rejectValue) => {
-            OriginalPromise.resolve().then(() => {
-              promiseTracker.emit('promiseCompleted', promise);
-            });
-
-            reject(rejectValue);
-          }
-        );
-
-        promiseTracker.emit('promiseCreated', promise);
-
-        return promise;
-      }
-
-      for (const staticMethod of Object.getOwnPropertyNames(OriginalPromise)) {
-        if (['length', 'name', 'prototype'].indexOf(staticMethod) !== -1) {
-          continue;
-        }
-
-        // Expecting reject, all, race, resolve here
-        // TODO: Do these need to be intercepted too?
-
-        context.Promise[staticMethod] = OriginalPromise[staticMethod];
-      }
 
       apiInstallData.originalMethods = {};
 
       for (const method of methods) {
-        if (method === 'finally' && OriginalPromise.prototype[method] === undefined) {
+        if (method === 'finally' && context.Promise.prototype[method] === undefined) {
           continue;
         }
 
-        apiInstallData.originalMethods[method] = OriginalPromise.prototype[method];
+        apiInstallData.originalMethods[method] = context.Promise.prototype[method];
       }
 
       for (const method of Object.keys(apiInstallData.originalMethods)) {
-        OriginalPromise.prototype[method] = function(resolveHandler, rejectHandler) {
+        context.Promise.prototype[method] = function(resolveHandler, rejectHandler) {
           promiseTracker.emit('promiseCreated', this);
 
           const promise = apiInstallData.originalMethods[method].apply(
@@ -84,11 +48,11 @@ module.exports = function() {
             this,
             [emitPromiseCompleted, emitPromiseCompleted]
           );
-        }
+        };
       }
 
       // Used to check there hasn't been another proxy set up when uninstalling
-      apiInstallData.proxyThen = OriginalPromise.prototype.then;
+      apiInstallData.proxyThen = context.Promise.prototype.then;
     }
 
     installData.promiseCreatedListener = (promise) => {
@@ -122,17 +86,11 @@ module.exports = function() {
     }
 
     for (const apiInstallData of installData.apis) {
-      if (apiInstallData.OriginalPromise.prototype.then !== apiInstallData.proxyThen) {
+      if (apiInstallData.context.Promise.prototype.then !== apiInstallData.proxyThen) {
         throw new Error(
           'OriginalPromise.prototype.then is not the one that was set up by promiseTracker. This ' +
           'can happen if there is other promise tracking or tweaking going on.'
         );
-      }
-
-      apiInstallData.context.Promise = apiInstallData.OriginalPromise;
-
-      for (const method of Object.keys(apiInstallData.originalMethods)) {
-        apiInstallData.OriginalPromise[method] = apiInstallData.originalMethods[method];
       }
     }
 
@@ -140,7 +98,7 @@ module.exports = function() {
     promiseTracker.removeListener('promiseCompleted', installData.promiseCompletedListener);
 
     installData = undefined;
-  }
+  };
 
   return promiseTracker;
 };
