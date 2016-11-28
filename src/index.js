@@ -25,7 +25,7 @@ module.exports = function() {
       apiInstallData.OriginalPromise = OriginalPromise;
       installData.apis.push(apiInstallData);
 
-      context.Promise = (resolve, reject) => {
+      context.Promise = function(resolve, reject) {
         const promise = new OriginalPromise(
           (resolveValue) => {
             OriginalPromise.resolve().then(() => {
@@ -43,7 +43,7 @@ module.exports = function() {
           }
         );
 
-        installData.promises.emit('promiseCreated', promise);
+        promiseTracker.emit('promiseCreated', promise);
 
         return promise;
       }
