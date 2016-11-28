@@ -7,7 +7,7 @@ module.exports = function() {
 
   let installData;
 
-  promiseTracker.install = (promiseContexts = [global]) => {
+  promiseTracker.install = ({ promiseContexts = [global] } = {}) => {
     if (installData) {
       throw new Error('promiseTracker is already installed (needs uninstall before re-use)');
     }
@@ -21,6 +21,7 @@ module.exports = function() {
     for (const context of promiseContexts) {
       const OriginalPromise = context.Promise;
       const apiInstallData = {};
+      apiInstallData.context = context;
       apiInstallData.OriginalPromise = OriginalPromise;
       installData.apis.push(apiInstallData);
 
@@ -61,15 +62,15 @@ module.exports = function() {
       apiInstallData.originalMethods = {};
 
       for (const method of methods) {
-        if (method === 'finally' && api.prototype[method] === undefined) {
+        if (method === 'finally' && OriginalPromise.prototype[method] === undefined) {
           continue;
         }
 
-        apiInstallData.originalMethods[method] = api.prototype[method];
+        apiInstallData.originalMethods[method] = OriginalPromise.prototype[method];
       }
 
       for (const method of Object.keys(apiInstallData.originalMethods)) {
-        api.prototype[method] = function(resolveHandler, rejectHandler) {
+        OriginalPromise.prototype[method] = function(resolveHandler, rejectHandler) {
           promiseTracker.emit('promiseCreated', this);
 
           const promise = apiInstallData.originalMethods[method].apply(
@@ -86,14 +87,17 @@ module.exports = function() {
         }
       }
 
-      apiInstallData.proxyThen = api.prototype.then;
+      // Used to check there hasn't been another proxy set up when uninstalling
+      apiInstallData.proxyThen = OriginalPromise.prototype.then;
     }
 
-    promiseTracker.on('promiseCreated', (promise) => {
+    installData.promiseCreatedListener = (promise) => {
       installData.promises.push(promise);
-    });
+    };
 
-    promiseTracker.on('promiseCompleted', (promise) => {
+    promiseTracker.addListener('promiseCreated', installData.promiseCreatedListener);
+
+    installData.promiseCompletedListener = (promise) => {
       if (installData.promises.length === 0) {
         return;
       }
@@ -103,7 +107,39 @@ module.exports = function() {
       if (installData.promises.length === 0) {
         promiseTracker.emit('allPromisesCompleted');
       }
-    });
+    };
+
+    promiseTracker.addListener('promiseCompleted', installData.promiseCompletedListener);
+  }
+
+  promiseTracker.uninstall = ({ quiet = false } = {}) => {
+    if (!installData) {
+      if (quiet) {
+        return;
+      }
+
+      throw new Error('promiseTracker is not installed');
+    }
+
+    for (const apiInstallData of installData.apis) {
+      if (apiInstallData.OriginalPromise.prototype.then !== apiInstallData.proxyThen) {
+        throw new Error(
+          'OriginalPromise.prototype.then is not the one that was set up by promiseTracker. This ' +
+          'can happen if there is other promise tracking or tweaking going on.'
+        );
+      }
+
+      apiInstallData.context.Promise = apiInstallData.OriginalPromise;
+
+      for (const method of Object.keys(apiInstallData.originalMethods)) {
+        apiInstallData.OriginalPromise[method] = apiInstallData.originalMethods[method];
+      }
+    }
+
+    promiseTracker.removeListener('promiseCreated', installData.promiseCreatedListener);
+    promiseTracker.removeListener('promiseCompleted', installData.promiseCompletedListener);
+
+    installData = undefined;
   }
 
   return promiseTracker;
