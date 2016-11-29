@@ -25,7 +25,7 @@ test('async things finish running', (t) => {
 
   doAsyncThings.run();
 
-  promiseTracker.on('allPromisesCompleted', () => {
+  promiseTracker.once('allPromisesCompleted', () => {
     t.equal(doAsyncThings.result, 42);
     promiseTracker.uninstall();
     t.end();
@@ -51,7 +51,7 @@ describe('tests', () => {
   it('test', (done) => {
     doAsyncThings.run();
 
-    promiseTracker.on('allPromisesCompleted', () => {
+    promiseTracker.once('allPromisesCompleted', () => {
       assert.equal(doAsyncThings.result, 42);
       done();
     });
