@@ -1,6 +1,6 @@
 {
   "name": "promise-tracker",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Tracks promises to ensure proper cleanup",
   "homepage": "https://github.com/voltrevo/promise-tracker#readme",
   "repository": "voltrevo/promise-tracker",
