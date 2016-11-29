@@ -20,11 +20,12 @@ const tape = require('tape');
 
 test('async things finish running', (t) => {
   promiseTracker.install();
-  
+
   doAsyncThings.run();
-  
+
   promiseTracker.on('allPromisesCompleted', () => {
     t.equal(doAsyncThings.result, 42);
+    promiseTracker.uninstall();
     t.end();
   });
 });
@@ -47,7 +48,7 @@ describe('tests', () => {
 
   it('test', (done) => {
     doAsyncThings.run();
-    
+
     promiseTracker.on('allPromisesCompleted', () => {
       assert.equal(doAsyncThings.result, 42);
       done();
