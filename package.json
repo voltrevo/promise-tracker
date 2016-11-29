@@ -2,6 +2,8 @@
   "name": "promise-tracker",
   "version": "0.0.1",
   "description": "Tracks promises to ensure proper cleanup",
+  "homepage": "https://github.com/voltrevo/promise-tracker#readme",
+  "repository": "voltrevo/promise-tracker",
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
