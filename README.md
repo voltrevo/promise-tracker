@@ -14,9 +14,9 @@ npm install --save-dev promise-tracker
 ```js
 'use strict';
 
-const promiseTracker = require('promise-tracker')();
-
 const doAsyncThings = require('do-async-things');
+const promiseTracker = require('promise-tracker')();
+const tape = require('tape');
 
 test('async things finish running', (t) => {
   promiseTracker.install();
@@ -34,9 +34,24 @@ test('async things finish running', (t) => {
 ### Mocha / Jasmine
 
 ```js
+'use strict';
+
+const assert = require('assert');
+
+const doAsyncThings = require('do-async-things');
+const promiseTracker = require('promise-tracker')();
+
 describe('tests', () => {
+  beforeEach(promiseTracker.install);
+  beforeEach(promiseTracker.uninstall);
+
   it('test', (done) => {
+    doAsyncThings.run();
     
+    promiseTracker.on('allPromisesCompleted', () => {
+      assert.equal(doAsyncThings.result, 42);
+      done();
+    });
   });
 });
 ```
